@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------
+  # Ingestion Engine: Apache Kafka (KRaft Mode)
+  # ----------------------------------------------------
+  kafka:
+    image: bitnami/kafka:3.7.0
+    container_name: fleet-kafka
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Storage & Serving Layer: PostgreSQL
+  # ----------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: fleet-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=fleet_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+    volumes:
+      - ./storage/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fleet_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Data Generator: Streaming Telemetry Producer (Kafka)
+  # ----------------------------------------------------
+  streaming-producer:
+    build: .
+    container_name: fleet-streaming-producer
+    command: python data_generator/streaming_producer.py
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - TELEMETRY_TOPIC=fleet-telemetry
+    volumes:
+      - shared-data-lake:/app/data_lake
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Data Generator: Batch Daily Expense Generator
+  # ----------------------------------------------------
+  batch-generator:
+    build: .
+    container_name: fleet-batch-generator
+    command: python data_generator/batch_generator.py
+    environment:
+      - CONFIG_PATH=config/config.yaml
+    volumes:
+      - shared-data-lake:/app/data_lake
+    depends_on:
+      - postgres
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Processing: Speed Layer (Streaming Processor)
+  # ----------------------------------------------------
+  speed-layer:
+    build: .
+    container_name: fleet-speed-layer
+    command: python streaming_layer/spark_streaming_job.py
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - TELEMETRY_TOPIC=fleet-telemetry
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=fleet_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+      - IDLE_ALERT_THRESHOLD_SEC=60
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Processing: Batch Layer (Reconciliation Engine)
+  # ----------------------------------------------------
+  batch-layer:
+    build: .
+    container_name: fleet-batch-layer
+    command: python batch_layer/scheduled_runner.py
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=fleet_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+      - DATA_DROP_DIR=/app/data_lake/daily_expenses
+      - RAW_TELEMETRY_DIR=/app/data_lake/raw_telemetry
+      - PARQUET_OUTPUT_DIR=/app/data_lake/reconciled_reports
+      - BATCH_INTERVAL_SEC=30
+    volumes:
+      - shared-data-lake:/app/data_lake
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Serving Layer: FastAPI Backend
+  # ----------------------------------------------------
+  api:
+    build: .
+    container_name: fleet-api
+    command: uvicorn serving.api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=fleet_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fleet-net
+
+  # ----------------------------------------------------
+  # Serving Layer: Streamlit Dashboard UI
+  # ----------------------------------------------------
+  dashboard:
+    build: .
+    container_name: fleet-dashboard
+    command: streamlit run serving/dashboard.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      - api
+    networks:
+      - fleet-net
+
+networks:
+  fleet-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  shared-data-lake:

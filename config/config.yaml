@@ -1,0 +1,47 @@
+# Fleet Operations Lambda Architecture Configuration
+
+simulation:
+  day_duration_sec: 300           # 1 simulated day = 5 minutes (300 seconds)
+  telemetry_interval_sec: 2       # Streaming emit frequency
+  num_vehicles: 25                # Fleet size
+  zones:
+    - name: "Downtown"
+      lat: 40.7128
+      lon: -74.0060
+      base_fare: 25.0
+    - name: "Airport"
+      lat: 40.6413
+      lon: -73.7781
+      base_fare: 45.0
+    - name: "Uptown"
+      lat: 40.7831
+      lon: -73.9712
+      base_fare: 20.0
+    - name: "Suburbs"
+      lat: 40.8448
+      lon: -73.8648
+      base_fare: 15.0
+
+kafka:
+  bootstrap_servers: "kafka:9092"
+  telemetry_topic: "fleet-telemetry"
+  raw_archive_topic: "fleet-telemetry-raw"
+  partitions: 3
+  replication_factor: 1
+
+postgres:
+  host: "postgres"
+  port: 5432
+  database: "fleet_db"
+  user: "postgres"
+  password: "postgrespassword"
+
+batch:
+  data_drop_dir: "/app/data_lake/daily_expenses"
+  archive_dir: "/app/data_lake/archived_expenses"
+  reconciliation_output_dir: "/app/data_lake/reconciled_reports"
+
+observability:
+  idle_threshold_seconds: 60      # Alert if idle > 60 seconds
+  log_level: "INFO"
+  health_check_port: 8000
