@@ -9,6 +9,7 @@ services:
   # `bitnami/kafka:3.7.0` no longer resolves (Docker Hub returns 404), which
   # made `docker compose up` fail with "manifest unknown".
   kafka:
+    restart: unless-stopped
     image: apache/kafka:3.7.0
     container_name: fleet-kafka
     ports:
@@ -22,6 +23,7 @@ services:
       - KAFKA_PROCESS_ROLES=broker,controller
       - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:9094
+      - KAFKA_LOG_DIRS=/tmp/kafka-logs
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
@@ -39,11 +41,14 @@ services:
       retries: 5
     networks:
       - fleet-net
+    volumes:
+      - kafka-data:/tmp/kafka-logs
 
   # ----------------------------------------------------
   # Storage & Serving Layer: PostgreSQL
   # ----------------------------------------------------
   postgres:
+    restart: unless-stopped
     image: postgres:15-alpine
     container_name: fleet-postgres
     ports:
@@ -51,7 +56,7 @@ services:
     environment:
       - POSTGRES_DB=fleet_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
     volumes:
       - ./storage/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres-data:/var/lib/postgresql/data
@@ -67,6 +72,7 @@ services:
   # Data Generator: Streaming Telemetry Producer (Kafka)
   # ----------------------------------------------------
   streaming-producer:
+    restart: unless-stopped
     build: .
     container_name: fleet-streaming-producer
     command: python data_generator/streaming_producer.py
@@ -85,6 +91,7 @@ services:
   # Data Generator: Batch Daily Expense Generator
   # ----------------------------------------------------
   batch-generator:
+    restart: unless-stopped
     build: .
     container_name: fleet-batch-generator
     command: python data_generator/batch_generator.py
@@ -101,6 +108,7 @@ services:
   # Processing: Speed Layer (Streaming Processor)
   # ----------------------------------------------------
   speed-layer:
+    restart: unless-stopped
     build: .
     container_name: fleet-speed-layer
     command: python streaming_layer/spark_streaming_job.py
@@ -111,7 +119,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=fleet_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
       - IDLE_ALERT_THRESHOLD_SEC=60
     depends_on:
       kafka:
@@ -125,15 +133,17 @@ services:
   # Processing: Batch Layer (Reconciliation Engine)
   # ----------------------------------------------------
   batch-layer:
+    restart: unless-stopped
     build: .
     container_name: fleet-batch-layer
     command: python batch_layer/scheduled_runner.py
     environment:
+      - DB_ENGINE=postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=fleet_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
       - DATA_DROP_DIR=/app/data_lake/daily_expenses
       - RAW_TELEMETRY_DIR=/app/data_lake/raw_telemetry
       - PARQUET_OUTPUT_DIR=/app/data_lake/reconciled_reports
@@ -150,17 +160,19 @@ services:
   # Serving Layer: FastAPI Backend
   # ----------------------------------------------------
   api:
+    restart: unless-stopped
     build: .
     container_name: fleet-api
     command: uvicorn serving.api:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     environment:
+      - DB_ENGINE=postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=fleet_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
       - STALE_DATA_THRESHOLD_SEC=60
       - CORS_ALLOW_ORIGINS=*
     healthcheck:
@@ -180,6 +192,7 @@ services:
   # Serving Layer: Streamlit Dashboard UI
   # ----------------------------------------------------
   dashboard:
+    restart: unless-stopped
     build: .
     container_name: fleet-dashboard
     command: streamlit run serving/dashboard.py --server.port 8501 --server.address 0.0.0.0
@@ -188,7 +201,14 @@ services:
     environment:
       - API_BASE_URL=http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8501/_stcore/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     networks:
       - fleet-net
 
@@ -200,6 +220,7 @@ services:
   # either the lightweight scheduled runner or Airflow (both are idempotent,
   # but running both just duplicates work).
   airflow:
+    restart: unless-stopped
     image: apache/airflow:2.8.1-python3.10
     container_name: fleet-airflow
     profiles: ["airflow"]
@@ -207,6 +228,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - DB_ENGINE=postgres
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
       - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
@@ -217,7 +239,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=fleet_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
       - DATA_DROP_DIR=/app/data_lake/daily_expenses
       - ARCHIVE_DIR=/app/data_lake/archived_expenses
       - REPORT_OUTPUT_DIR=/app/data_lake/consolidated_reports
@@ -241,7 +263,7 @@ networks:
     driver: bridge
 
 volumes:
+  kafka-data:
   postgres-data:
   shared-data-lake:
   airflow-home:
-

@@ -55,22 +55,10 @@ st.markdown("""
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 def fetch_api(endpoint):
-    """Fetch from API with fallback between localhost and api container host."""
-    urls = [f"{API_BASE_URL}{endpoint}"]
-    if "api:8000" in API_BASE_URL:
-        urls.append(f"http://localhost:8000{endpoint}")
-    elif "localhost:8000" in API_BASE_URL:
-        urls.append(f"http://127.0.0.1:8000{endpoint}")
-
-    last_err = None
-    for url in urls:
-        try:
-            res = requests.get(url, timeout=3)
-            if res.status_code == 200:
-                return res.json()
-        except Exception as e:
-            last_err = e
-    raise last_err or Exception(f"Failed to fetch {endpoint}")
+    """Fetch one API endpoint and preserve HTTP errors for the dashboard message."""
+    res = requests.get(f"{API_BASE_URL}{endpoint}", timeout=5)
+    res.raise_for_status()
+    return res.json()
 
 st.sidebar.title("🎛️ Control Panel")
 auto_refresh = st.sidebar.checkbox("Auto-refresh (every 5s)", value=True)

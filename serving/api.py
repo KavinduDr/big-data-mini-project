@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from storage.db_adapter import get_connection
@@ -108,26 +109,27 @@ def health_check():
     engine_type = "unknown"
     ingest_lag = None
     latest_window_end = None
+    database_healthy = False
 
     try:
         engine_type, res1 = query_db("SELECT COUNT(*) as count FROM speed_fleet_metrics;")
         total_metrics_count = res1[0]["count"] if res1 else 0
 
-        _, res2 = query_db("SELECT COUNT(*) as count FROM speed_vehicle_alerts WHERE resolved = 0 OR resolved = FALSE;")
+        _, res2 = query_db("SELECT COUNT(*) as count FROM speed_vehicle_alerts WHERE resolved = FALSE;")
         recent_alerts_count = res2[0]["count"] if res2 else 0
 
         ingest_lag, latest_window_end = _pipeline_freshness()
         db_status = f"HEALTHY ({engine_type.upper()})"
+        database_healthy = True
     except Exception as e:
         db_status = f"UNHEALTHY: {str(e)}"
 
-    db_healthy = "HEALTHY" in db_status
     # Assignment observability rule: alert when no data has been received for N
     # seconds (default 60s), i.e. ingestion/processing has stalled.
     data_fresh = ingest_lag is not None and ingest_lag <= STALE_DATA_THRESHOLD_SEC
 
-    return {
-        "status": "HEALTHY" if (db_healthy and data_fresh) else "DEGRADED",
+    payload = {
+        "status": "HEALTHY" if (database_healthy and data_fresh) else "DEGRADED",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "database_health": db_status,
         "database_engine": engine_type,
@@ -138,6 +140,7 @@ def health_check():
         "stale_data_threshold_sec": STALE_DATA_THRESHOLD_SEC,
         "data_fresh": data_fresh,
     }
+    return JSONResponse(status_code=200 if database_healthy else 503, content=payload)
 
 @app.get("/metrics")
 def prometheus_metrics():
@@ -160,9 +163,9 @@ def prometheus_metrics():
         _, rows = query_db("""
             SELECT
                 (SELECT COUNT(*) FROM speed_fleet_metrics) AS windows_recorded,
-                (SELECT COUNT(*) FROM speed_vehicle_alerts WHERE resolved = 0 OR resolved = FALSE) AS unresolved_alerts,
+                (SELECT COUNT(*) FROM speed_vehicle_alerts WHERE resolved = FALSE) AS unresolved_alerts,
                 (SELECT COUNT(*) FROM batch_daily_profitability) AS reconciled_rows,
-                (SELECT COUNT(*) FROM batch_daily_profitability WHERE is_unprofitable = 1 OR is_unprofitable = TRUE) AS unprofitable_vehicles,
+                (SELECT COUNT(*) FROM batch_daily_profitability WHERE is_unprofitable = TRUE) AS unprofitable_vehicles,
                 (SELECT COALESCE(SUM(net_profit), 0) FROM batch_daily_profitability) AS net_profit_total;
         """)
         if rows:
@@ -202,35 +205,36 @@ def prometheus_metrics():
 def get_realtime_utilization():
     """Returns live fleet utilization metrics: active vehicles, idle ratio, trips, and earnings by zone."""
     query = """
-        SELECT 
+        WITH ranked_metrics AS (
+          SELECT *, ROW_NUMBER() OVER (
+            PARTITION BY grid_zone ORDER BY window_end DESC, window_start DESC
+          ) AS zone_rank
+          FROM speed_fleet_metrics
+        )
+        SELECT
             grid_zone,
             COALESCE(active_vehicles, 0) AS active_vehicles,
             COALESCE(idle_vehicles, 0) AS idle_vehicles,
             COALESCE(enroute_vehicles, 0) AS enroute_vehicles,
             (COALESCE(active_vehicles, 0) + COALESCE(idle_vehicles, 0) + COALESCE(enroute_vehicles, 0)) as total_fleet_zone,
-            ROUND(CASE 
-                WHEN (COALESCE(active_vehicles, 0) + COALESCE(idle_vehicles, 0) + COALESCE(enroute_vehicles, 0)) > 0 
-                THEN (CAST(idle_vehicles AS REAL) / (COALESCE(active_vehicles, 0) + COALESCE(idle_vehicles, 0) + COALESCE(enroute_vehicles, 0))) * 100 
-                ELSE 0.0 
-            END, 2) as idle_ratio_pct,
             COALESCE(total_trips, 0) AS total_trips,
             COALESCE(total_fare, 0) as zone_earnings,
             COALESCE(avg_speed, 0) AS avg_speed,
             window_start,
             window_end,
             updated_at
-        FROM speed_fleet_metrics
+        FROM ranked_metrics
+        WHERE zone_rank = 1
         ORDER BY window_end DESC, zone_earnings DESC;
     """
     try:
         _, rows = query_db(query)
-        # Deduplicate to keep latest row per zone
-        zone_map = {}
-        for r in rows:
-            z = r["grid_zone"]
-            if z not in zone_map:
-                zone_map[z] = r
-        deduped_rows = list(zone_map.values())
+        deduped_rows = rows
+        for row in deduped_rows:
+            fleet_in_zone = int(row["total_fleet_zone"] or 0)
+            row["idle_ratio_pct"] = round(
+                int(row["idle_vehicles"] or 0) / fleet_in_zone * 100, 2
+            ) if fleet_in_zone else 0.0
 
         total_active = sum(int(r["active_vehicles"] or 0) for r in deduped_rows)
         total_idle = sum(int(r["idle_vehicles"] or 0) for r in deduped_rows)
@@ -270,7 +274,7 @@ def get_vehicle_alerts(
         {where_clause}
         ORDER BY alert_timestamp DESC
         LIMIT %s;
-    """.format(where_clause="WHERE resolved = 0 OR resolved = FALSE" if only_unresolved else "")
+    """.format(where_clause="WHERE resolved = FALSE" if only_unresolved else "")
     try:
         _, alerts = query_db(query, (limit,))
         return {

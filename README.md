@@ -150,7 +150,10 @@ docker compose logs -f airflow | grep -i password
 > Run **either** the `batch-layer` scheduled runner **or** Airflow. Both are idempotent (already-reconciled simulated dates are skipped), but they duplicate work if both are active.
 
 #### Ports
-Compose publishes the demo services on all host interfaces: dashboard `8501`, API `8000`, PostgreSQL `5432`, Kafka `9092` and `9094`, and optional Airflow `8080`. Use `http://<VPS-IP>:8501` for the dashboard and the matching ports for the other services. Allow these ports through the VPS firewall. These demo services have no authentication configured, so run them only on a network where that exposure is intended. For remote Kafka clients, set `KAFKA_EXTERNAL_HOST=<VPS-IP>` in the environment before starting Compose so Kafka advertises the VPS address on port `9094`.
+Compose publishes the demo services on all host interfaces: dashboard `8501`, API `8000`, PostgreSQL `5432`, Kafka `9092` and `9094`, and optional Airflow `8080`. Use `http://<VPS-IP>:8501` for the dashboard and the matching ports for the other services. Allow these ports through the VPS firewall. The demo uses known sample database credentials, and Kafka is unauthenticated, so run it on a network where this exposure is intended. For remote Kafka clients, set `KAFKA_EXTERNAL_HOST=<VPS-IP>` in the environment before starting Compose so Kafka advertises the VPS address on port `9094`.
+
+#### VPS quick start
+Copy `.env.example` to `.env`, set a demo PostgreSQL password, and set `KAFKA_EXTERNAL_HOST` to the VPS public IP if clients outside Docker will connect to Kafka. Then run `docker compose up --build -d`. Compose restarts services after VPS reboots, waits for PostgreSQL and the API before starting dependent services, and stores PostgreSQL, Kafka, and data-lake files in named volumes. Open the required ports in both the VPS firewall and hosting provider firewall.
 
 
 ---
