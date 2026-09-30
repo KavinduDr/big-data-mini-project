@@ -30,6 +30,7 @@ RUN useradd --create-home --shell /bin/bash fleet \
 USER fleet
 
 EXPOSE 8000
+EXPOSE 8501
 
 # NOTE: no HEALTHCHECK here on purpose - this image is shared by the producer,
 # speed layer, batch layer and API services, so a container level HTTP probe
@@ -38,4 +39,3 @@ EXPOSE 8000
 
 # Default: serve the API. Compose overrides this per service.
 CMD ["uvicorn", "serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
-
