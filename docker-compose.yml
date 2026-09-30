@@ -12,17 +12,16 @@ services:
     image: apache/kafka:3.7.0
     container_name: fleet-kafka
     ports:
-      # Bound to loopback: this is a demo broker with no authentication, so it
-      # must not be reachable from outside the host.
-      - "127.0.0.1:9092:9092"
-      - "127.0.0.1:9094:9094"
+      # Publish both broker listeners for external demo clients.
+      - "9092:9092"
+      - "9094:9094"
     environment:
       # The apache/kafka image maps KAFKA_* env vars onto broker properties and
       # applies none of its defaults when any override is present.
       - KAFKA_NODE_ID=0
       - KAFKA_PROCESS_ROLES=broker,controller
       - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:9094
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
@@ -48,8 +47,7 @@ services:
     image: postgres:15-alpine
     container_name: fleet-postgres
     ports:
-      # Loopback only: the demo password must never be exposed on a public host.
-      - "127.0.0.1:5432:5432"
+      - "5432:5432"
     environment:
       - POSTGRES_DB=fleet_db
       - POSTGRES_USER=postgres
@@ -156,7 +154,7 @@ services:
     container_name: fleet-api
     command: uvicorn serving.api:app --host 0.0.0.0 --port 8000
     ports:
-      - "127.0.0.1:8000:8000"
+      - "8000:8000"
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -164,7 +162,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgrespassword
       - STALE_DATA_THRESHOLD_SEC=60
-      - CORS_ALLOW_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
+      - CORS_ALLOW_ORIGINS=*
     healthcheck:
       # Health rule exposed for orchestrators and `docker compose ps`.
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
@@ -207,7 +205,7 @@ services:
     profiles: ["airflow"]
     command: airflow standalone
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
     environment:
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags

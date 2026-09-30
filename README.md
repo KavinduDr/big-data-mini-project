@@ -150,7 +150,7 @@ docker compose logs -f airflow | grep -i password
 > Run **either** the `batch-layer` scheduled runner **or** Airflow. Both are idempotent (already-reconciled simulated dates are skipped), but they duplicate work if both are active.
 
 #### Ports
-The dashboard is published on host port `8501` so it can be reached at `http://<VPS-IP>:8501`. PostgreSQL, Kafka, the API, and Airflow remain bound to `127.0.0.1` (loopback); they have no authentication in this demo and must not be exposed publicly. Restrict dashboard access with the VPS firewall if it should not be public.
+Compose publishes the demo services on all host interfaces: dashboard `8501`, API `8000`, PostgreSQL `5432`, Kafka `9092` and `9094`, and optional Airflow `8080`. Use `http://<VPS-IP>:8501` for the dashboard and the matching ports for the other services. Allow these ports through the VPS firewall. These demo services have no authentication configured, so run them only on a network where that exposure is intended. For remote Kafka clients, set `KAFKA_EXTERNAL_HOST=<VPS-IP>` in the environment before starting Compose so Kafka advertises the VPS address on port `9094`.
 
 
 ---
