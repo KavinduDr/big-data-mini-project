@@ -107,7 +107,7 @@ if api_online:
     unprofitable_count = profit_res.get("unprofitable_vehicles_count", 0)
     total_net_profit = profit_res.get("total_fleet_net_profit", 0.0)
 
-    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
+    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
     with kpi1:
         st.metric(label="Active Vehicles (On Trip)", value=summary.get("total_active_on_trip", 0))
     with kpi2:
@@ -122,6 +122,15 @@ if api_online:
             value=unprofitable_count, 
             delta=f"${total_net_profit:,.2f} Net",
             delta_color="normal" if total_net_profit >= 0 else "inverse"
+        )
+    with kpi6:
+        # Observability: freshness of the speed layer (see GET /health).
+        ingest_lag = health_res.get("ingest_lag_seconds")
+        st.metric(
+            label="Telemetry Lag",
+            value="n/a" if ingest_lag is None else f"{ingest_lag:,.1f}s",
+            delta=health_res.get("status"),
+            delta_color="normal" if health_res.get("data_fresh") else "inverse"
         )
 
     st.markdown("---")
@@ -223,7 +232,9 @@ if api_online:
 
             # Detailed Table
             st.write("### Consolidated Per-Vehicle Reconciliation Table")
-            display_cols = ["simulated_date", "vehicle_id", "total_trips", "gross_earnings", "fuel_cost", "maintenance_cost", "total_expenses", "net_profit", "profit_margin_pct", "is_unprofitable", "recommendation"]
+            desired_cols = ["simulated_date", "vehicle_id", "total_trips", "gross_earnings", "fuel_cost", "maintenance_cost", "total_expenses", "net_profit", "profit_margin_pct", "is_unprofitable", "recommendation"]
+            # Guard against schema drift between the API payload and the UI.
+            display_cols = [col for col in desired_cols if col in df_profit.columns]
             st.dataframe(df_profit[display_cols], use_container_width=True)
         else:
             st.info("Batch layer reconciliation in progress or awaiting first daily drop from Airflow DAG.")

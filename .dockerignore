@@ -1,0 +1,21 @@
+# Build context exclusions: keeps the image small and prevents demo artefacts,
+# credentials and the local SQLite database from being baked into the image.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.pytest_cache
+.coverage
+htmlcov
+*.log
+docs
+data_lake
+tests
+.idea
+.vscode
+.DS_Store

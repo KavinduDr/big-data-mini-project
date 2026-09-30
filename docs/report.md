@@ -116,7 +116,7 @@ flowchart TD
     end
 
     subgraph Speed Layer
-        SP[Spark / Stream Processor<br/>10s Tumbling Windows]
+        SP[Kafka Consumer / Stream Processor<br/>10s Stateful Tumbling Windows]
         AL[Alert Engine<br/>Threshold: Idle > 60s]
     end
 
@@ -195,9 +195,10 @@ To satisfy the module learning outcomes, every component in the pipeline was sel
 
 ### 6.1 Simulated Clock Model
 In production, telematics emit continuously while garages compile expenses nightly. To facilitate complete end-to-end evaluation within a standard academic demonstration session, the system applies **simulated time compression**:
-- **Simulated Day:** $1 \text{ Day} = 5 \text{ Minutes} = 300 \text{ Seconds}$.
+- **Simulated Day (Docker / Airflow mode):** $1 \text{ Day} = 5 \text{ Minutes} = 300 \text{ Seconds}$ (`simulation.day_duration_sec` in `config/config.yaml`).
+- **Simulated Day (standalone zero-Docker mode):** the runner defaults to a **60-second** day (`SIMULATED_DAY_SEC`) so a full day cycle can be demonstrated in under a minute; set `SIMULATED_DAY_SEC=300` to use the same clock as the containerised stack.
 - **Streaming Frequency:** Events emitted every 2 seconds.
-- **Compression Ratio:** $1 : 288$ ($86,400\text{s} / 300\text{s}$).
+- **Compression Ratio:** $1 : 288$ ($86,400\text{s} / 300\text{s}$); $1 : 1440$ for the 60-second standalone day.
 
 ### 6.2 Streaming Producer (`data_generator/streaming_producer.py`)
 - Emulates 25 vehicles moving across 4 zones: *Downtown*, *Airport*, *Uptown*, and *Suburbs*.
@@ -217,22 +218,24 @@ In production, telematics emit continuously while garages compile expenses night
 ## 7. Processing Layer: Stream & Batch Transformations
 
 ### 7.1 Speed Layer Transformations
-1. **JSON Deserialization & Cleaning:** Validates incoming payloads and handles missing attributes.
-2. **Windowed Aggregation:** Aggregates telemetry over 10-second tumbling windows grouped by `grid_zone`:
-   - $\text{Active Count} = \sum (\text{status} = \text{'on\_trip'})$
-   - $\text{Idle Count} = \sum (\text{status} = \text{'idle'})$
-   - $\text{Idle Ratio} = \frac{\text{Idle Count}}{\text{Active} + \text{Enroute} + \text{Idle}} \times 100$
-   - $\text{Zone Earnings} = \sum \text{fare}$
-   - $\text{Average Speed} = \frac{\sum \text{speed}}{N}$
+1. **JSON Deserialization & Cleaning:** Validates incoming payloads (vehicle id, numeric fields) and counts rejected/malformed records instead of failing the window.
+2. **Windowed Aggregation:** Aggregates telemetry over 10-second tumbling windows grouped by `grid_zone`. The aggregator keeps the **latest known state per vehicle** inside the window, so counts are *distinct vehicles*, not heartbeats:
+   - $\text{Active Count} = |\{v : \text{last\_status}(v) = \text{'on\_trip'}\}|$
+   - $\text{Idle Count} = |\{v : \text{last\_status}(v) = \text{'idle'}\}|$
+   - $\text{Idle Ratio} = \frac{\text{Idle Count}}{\text{Active} + \text{Enroute} + \text{Idle}} \times 100$ (denominator $\le$ fleet size)
+   - $\text{Zone Earnings} = \sum_{t} \left( \text{fare}_{t,\text{now}} - \max(\text{fare}_{t,\text{seen so far}}) \right)$ — only the *increment* of each trip's running fare is booked, so a trip spanning several windows is not double counted.
+   - $\text{Average Speed} = \frac{\sum \text{latest speed}}{N}$
+   - Earlier revisions summed one row per heartbeat, which inflated the fleet denominator (25 vehicles $\times$ 5 heartbeats = 125 "vehicles") and re-counted cumulative trip fares on every tick (~5$\times$ revenue inflation); both defects are eliminated by the stateful aggregator (`streaming_layer/window_aggregator.py`).
 3. **Threshold-Based Alert Logic:** Evaluates vehicle idle duration:
    $$\text{Condition: } \text{status} == \text{'idle'} \quad \land \quad \text{idle\_duration\_sec} \ge 60\text{s}$$
-   Violations trigger an automated alert record into `speed_vehicle_alerts` with a 60-second de-duplication suppression window.
+   Violations trigger an automated alert record into `speed_vehicle_alerts` with a 60-second de-duplication suppression window. The suppression cache is bounded so a long-running pipeline cannot grow it without limit.
 
 ### 7.2 Batch Layer Transformations & Reconciliation
 The batch reconciliation job executes through the following mathematical pipeline:
-1. **Revenue Extraction:** Scans raw telemetry logs to compute gross daily revenue and completed trip counts per vehicle:
-   $$\text{Gross Earnings}_v = \sum_{t \in \text{Trips}_v} \text{Fare}_t$$
-2. **Expense Joins:** Joins computed revenues with garage expense records on `vehicle_id`.
+1. **Revenue Extraction (date-scoped):** Scans the raw JSONL telemetry lake and buckets records by their event date. Because `fare` is a *running trip total* re-emitted on every heartbeat, the revenue of a trip is its **maximum observed fare**, and daily gross revenue is the sum over that day's trips:
+   $$\text{Gross Earnings}_v(d) = \sum_{t \in \text{Trips}_v(d)} \max_{\tau \in d} \text{fare}_{t,\tau}, \qquad \text{Trips}_v(d) = |\{t : \text{vehicle}=v,\ \text{status}=\text{on\_trip},\ \text{date}(\tau)=d\}|$$
+   Recording only the *first* heartbeat of a trip (as an earlier revision did) captures the smallest possible fare and under-reports revenue; reconciling every day against all-time telemetry also breaks replayability. Both issues are resolved by the date-keyed, per-trip maximum aggregation.
+2. **Expense Joins:** Joins computed revenues with garage expense records on `vehicle_id` (+ the simulated date taken from the drop file). The raw expense rows are upserted into `batch_vehicle_expenses` and the reconciled result into `batch_daily_profitability`; dates already present in the serving table are skipped unless a forced recompute is requested. Runs are therefore **idempotent** and safe to schedule frequently. When a vehicle-day has no usable telemetry (cold start), a distance-implied fallback ($\$0.75/\text{km}$) is applied and the fallback count is logged rather than silently substituted.
 3. **Net Profitability Calculation:**
    $$\text{Total Expenses}_v = \text{Fuel Cost}_v + \text{Maintenance Cost}_v$$
    $$\text{Net Profit}_v = \text{Gross Earnings}_v - \text{Total Expenses}_v$$
@@ -344,35 +347,70 @@ All microservices emit structured JSON logs with standardized metadata:
 
 ### 9.2 Automated Health Check Endpoint (`/health`)
 The FastAPI serving container exposes a dedicated monitoring endpoint checking:
-- PostgreSQL database connectivity and query response time.
-- Ingestion window accumulation count.
-- Total count of active, unresolved vehicle alerts.
+- Database connectivity and engine (`POSTGRES` / `SQLITE`).
+- **Ingestion freshness (alert rule):** the newest closed streaming window (`MAX(window_end)`) is compared against the simulated clock. If no data has been received for more than `STALE_DATA_THRESHOLD_SEC` (default **60 s**), the endpoint reports `status = DEGRADED`, `data_fresh = false` and the measured `ingest_lag_seconds`. This implements the required "no data received in N minutes" rule rather than only reporting row counts.
+- Ingestion window count and the number of unresolved vehicle alerts.
 
-### 9.3 Health & Alerting Rules Summary
+Example response:
+```json
+{
+  "status": "HEALTHY",
+  "database_health": "HEALTHY (SQLITE)",
+  "database_engine": "sqlite",
+  "streaming_windows_recorded": 12,
+  "unresolved_alerts": 0,
+  "last_window_end": "2026-09-30T16:04:31.404575+00:00",
+  "ingest_lag_seconds": 3.76,
+  "stale_data_threshold_sec": 60,
+  "data_fresh": true
+}
+```
+
+### 9.3 Metrics Endpoint (`/metrics`)
+A dependency-free Prometheus text exposition (`text/plain; version=0.0.4`) exports pipeline gauges for scraping or for demonstration during the viva:
+
+| Metric | Meaning |
+| :--- | :--- |
+| `fleet_db_up` | 1 when the serving database is queryable |
+| `fleet_speed_windows_recorded` | Rows in `speed_fleet_metrics` |
+| `fleet_unresolved_alerts` | Unresolved threshold alerts |
+| `fleet_batch_reconciled_rows` | Rows in `batch_daily_profitability` |
+| `fleet_unprofitable_vehicles` | Reconciled vehicles with negative net profit |
+| `fleet_net_profit_total` | Sum of net profit across reconciled days |
+| `fleet_ingest_lag_seconds` | Seconds since the newest closed streaming window |
+| `fleet_stale_data` | 1 when the ingestion lag exceeds the stale threshold |
+
+### 9.4 Health & Alerting Rules Summary
 
 | Pipeline Component | Metric Monitored | Threshold / Condition | Automated Action |
 | :--- | :--- | :--- | :--- |
-| **Streaming Producer** | Broker Availability | 15 Retries with exponential backoff | Emits CRITICAL log and halts |
+| **Streaming Producer** | Broker Availability | 15 Retries with backoff | Emits CRITICAL log and halts; bus saturation is counted as dropped events |
 | **Speed Layer** | Vehicle Idle Duration | $\ge 60\text{ seconds}$ | Inserts alert into `speed_vehicle_alerts` |
-| **Speed Layer** | Duplicate Alerts | Same vehicle alert within 60s | Suppresses duplicate notifications |
+| **Speed Layer** | Duplicate Alerts | Same vehicle alert within 60s | Suppresses duplicate notifications (bounded cache) |
+| **Speed Layer** | Serving-store outage | Write/connection failure | Logs ERROR and reconnects automatically instead of exiting the daemon |
 | **Batch Layer** | File Arrival | No file in `/daily_expenses` | Gracefully skips iteration, logs warning |
-| **Serving API** | Database Connection | Query failure | Returns HTTP 500 with DEGRADED status |
+| **Batch Layer** | Missing telemetry for a vehicle-day | Revenue joined from the lake is $\le \$5$ | Distance-implied fallback revenue + WARNING count in the run summary |
+| **Serving API** | Database Connection | Query failure | Returns HTTP 500 / `DEGRADED` status |
+| **Serving API** | Ingestion freshness | Newest window older than 60s (or absent) | `/health` returns `DEGRADED` (`data_fresh=false`), `fleet_stale_data=1` |
 
 ---
 
 ## 10. Demonstration Results & Operational Analytics
 
 ### 10.1 Real-Time Fleet Utilization Results
-During pipeline operation, the speed layer successfully processes ~750 events/minute, delivering live operational metrics:
+During pipeline operation, the speed layer processes ~750 events/minute (25 vehicles every 2 s). The table below is a real payload from `GET /api/fleet/realtime-utilization` for one closed 10-second window:
 
-| Grid Zone | Active Vehicles | Enroute Vehicles | Idle Vehicles | Idle Ratio (%) | Real-Time Earnings ($) | Avg Speed (km/h) |
+| Grid Zone | Active Vehicles | Enroute Vehicles | Idle Vehicles | Idle Ratio (%) | Window Earnings ($) | Avg Speed (km/h) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Downtown** | 7 | 2 | 1 | 10.0% | $412.50 | 32.4 |
-| **Airport** | 5 | 1 | 0 | 0.0% | $385.00 | 58.2 |
-| **Uptown** | 4 | 2 | 2 | 25.0% | $210.00 | 28.6 |
-| **Suburbs** | 2 | 1 | 3 | 50.0% | $95.50 | 44.1 |
+| **Downtown** | 2 | 5 | 1 | 12.5% | $16.00 | 30.9 |
+| **Airport** | 0 | 3 | 3 | 50.0% | $10.09 | 17.2 |
+| **Uptown** | 4 | 1 | 0 | 0.0% | $10.10 | 37.8 |
+| **Suburbs** | 4 | 1 | 1 | 16.7% | $22.42 | 33.3 |
+| **Fleet total** | **10** | **10** | **5** | **20.0%** | **$58.61** | — |
 
-*Insight:* The Suburbs zone exhibits high idle ratios (50%) and low revenue, indicating fleet managers should implement dynamic dispatch incentives to guide drivers toward Downtown and Airport corridors.
+*Invariant check:* `Active + Enroute + Idle = 25`, exactly the simulated fleet size, confirming that the window aggregation counts distinct vehicles rather than heartbeats. Earnings are the fare *increment* observed during the window (a trip's cumulative fare is only booked once), and the measured ingestion lag was 1.7 s.
+
+*Insight:* the **Airport** zone carries no active trips, the highest idle ratio (50%) and the lowest average speed, while **Uptown** and **Suburbs** show zero-to-low idle ratios — the dispatch engine should incentivise rebalancing from Airport towards those corridors. Note that the largest *revenue* contribution comes from Suburbs, so an Airport-only rebalancing policy would need to be balanced against trip value, not just idle ratio.
 
 ### 10.2 Profitability Reconciliation Sample Output
 The batch layer reconciliation successfully identifies unprofitable vehicles after factoring in yesterday's garage maintenance and fuel costs:
@@ -389,15 +427,19 @@ The batch layer reconciliation successfully identifies unprofitable vehicles aft
 ## 11. Limitations, Trade-Offs & Production Scale Roadmap
 
 ### 11.1 System Limitations & Trade-Offs in Mini-Project
-- **Dual Pipeline Maintenance:** In accordance with the classic Lambda critique, business logic regarding fare calculations exists in both the stream and batch layers.
+- **Dual Pipeline Maintenance:** In accordance with the classic Lambda critique, the same business semantics (fare/fee accounting) exist on both the speed and the batch path. Within this implementation the metric aggregation is shared by the Kafka consumer and the standalone runner (`streaming_layer/window_aggregator.py`), and the profitability rules live in one module used by both the Airflow DAG and the standalone loop (`batch_layer/batch_processor.py`), which removes the usual copy-paste drift between the two paths.
+- **Stream processing engine:** the speed layer is a single-process, at-least-once **Kafka consumer with a stateful in-memory tumbling-window aggregator** rather than Spark Structured Streaming. At the demonstrated rate (~12.5 events/s, ~750 events/min) this is well within the capacity of one process and gives sub-second latency with no cluster overhead, but it does not scale beyond one consumer-group member per partition and its window state is lost on restart (no checkpointing/watermarks). Spark Structured Streaming is the production path (see §11.2).
 - **Single-Node Containerization:** Services run on a single host via Docker Compose. While ideal for demonstration, this does not provide multi-host distributed fault tolerance.
 - **Clock Compression Artefacts:** 1 simulated day = 5 minutes means batch jobs run frequently, increasing metadata overhead compared to production daily runs.
+- **Demo credentials and unauthenticated ports:** PostgreSQL/Kafka use fixed demo passwords and no TLS/SASL; the API has no authentication. Host ports are bound to `127.0.0.1` and CORS origins are restricted, but this is not a production security posture (see §11.2).
+- **Python runtime support:** the pinned `kafka-python==2.0.2` did not import on Python 3.12 (vendored `six.moves`); the project now pins `2.0.3`. The container image is Python 3.10.
 
 ### 11.2 Production Scale Roadmap
-1. **Distributed Compute on Kubernetes (EKS/GKE):** Deploy Apache Spark on Kubernetes with dynamic executor allocation.
+1. **Spark Structured Streaming on Kubernetes:** Replace the single-process consumer with PySpark Structured Streaming (`readStream.format("kafka")`) using event-time windowing, watermarks and a checkpointed state store (S3/HDFS) so window state survives restarts and processing scales horizontally with topic partitions.
 2. **Object Storage Lakehouse (AWS S3 + Apache Iceberg / Delta Lake):** Replace local volume directories with cloud object stores utilizing Apache Iceberg for ACID transactions, partition evolution, and time-travel querying.
 3. **Change Data Capture (Debezium):** Ingest database changes directly into Kafka via Debezium Kafka Connect for zero-data-loss streaming pipelines.
-4. **Prometheus & Grafana:** Integrate Prometheus JMX exporters on Kafka brokers and Spark drivers, visualizing metrics on Grafana dashboards.
+4. **Metrics scraping & dashboards:** the `/metrics` Prometheus exposition endpoint already exists, so the remaining work is deploying Prometheus/Grafana, adding Kafka JMX exporters, alerting rules on `fleet_ingest_lag_seconds` / `fleet_stale_data`, and distributed tracing (OpenTelemetry) across producer → speed → batch.
+5. **Security hardening:** secret management for database credentials (e.g. Docker/Vault secrets), TLS + SASL for Kafka, API authentication/rate limiting, and non-root, read-only containers (the image already runs as a non-root user).
 
 ---
 
