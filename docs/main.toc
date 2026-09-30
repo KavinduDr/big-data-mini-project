@@ -1,0 +1,31 @@
+\contentsline {section}{\numberline {1}Introduction \& Business Requirements Analysis}{1}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Operational Domain \& Problem Context}{1}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Core Business Questions}{1}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Dual-Cadence Data Sources}{1}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Simulated Clock Model}{2}{subsection.1.4}%
+\contentsline {section}{\numberline {2}Architecture Decision: Lambda vs. Kappa Evaluation}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Architectural Paradigm Overview}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Systematic Comparative Evaluation}{2}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Justification for Selecting Lambda Architecture}{2}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Defense Against Rejected Alternative (Kappa Architecture)}{3}{subsection.2.4}%
+\contentsline {section}{\numberline {3}End-to-End System Architecture \& Data Flow}{4}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Detailed System Architecture}{4}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Layer Responsibilities \& Data Pipelines}{4}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Technology Stack Selection \& Component Justification}{5}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Apache Kafka in KRaft Mode}{5}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}PyArrow and Columnar Parquet Archives}{5}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Data Ingestion \& Processing Implementation}{6}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Simulated Telemetry Ingestion}{6}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Speed Layer Transformations \& Alert Logic}{6}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Batch Layer Reconciliation Algorithm}{6}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Storage, Serving Layer \& Observability Design}{8}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Database Schema Architecture}{8}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Unified Serving Abstraction}{8}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Observability, Alerting \& Health Monitoring}{9}{subsection.6.3}%
+\contentsline {section}{\numberline {7}Demonstration Results \& Operational Analytics}{10}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Real-Time Fleet Utilization Findings}{10}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Profitability Reconciliation Analysis}{10}{subsection.7.2}%
+\contentsline {section}{\numberline {8}Limitations, Trade-Offs \& Production Scale Roadmap}{12}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Academic Project Constraints \& Trade-Offs}{12}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Production Scale Engineering Roadmap}{12}{subsection.8.2}%
+\contentsline {section}{References}{13}{subsection.8.2}%
