@@ -150,7 +150,7 @@ docker compose logs -f airflow | grep -i password
 > Run **either** the `batch-layer` scheduled runner **or** Airflow. Both are idempotent (already-reconciled simulated dates are skipped), but they duplicate work if both are active.
 
 #### Ports
-All host port bindings are restricted to `127.0.0.1` (loopback). PostgreSQL, Kafka and Airflow have no authentication in this demo, so they must not be exposed publicly.
+The dashboard is published on host port `8501` so it can be reached at `http://<VPS-IP>:8501`. PostgreSQL, Kafka, the API, and Airflow remain bound to `127.0.0.1` (loopback); they have no authentication in this demo and must not be exposed publicly. Restrict dashboard access with the VPS firewall if it should not be public.
 
 
 ---
