@@ -19,6 +19,11 @@ logger = logging.getLogger("StreamingProducer")
 
 CONFIG_PATH = os.getenv("CONFIG_PATH", "config/config.yaml")
 
+# Repo relative default keeps the producer runnable on a host (not only in Docker)
+DEFAULT_RAW_ARCHIVE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_lake", "raw_telemetry"
+)
+
 def load_config():
     if yaml and os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r") as f:
@@ -69,6 +74,7 @@ class FleetSimulator:
     def __init__(self, config):
         self.num_vehicles = config["simulation"].get("num_vehicles", 25)
         self.zones = config["simulation"].get("zones", [])
+        self.telemetry_interval_sec = float(config["simulation"].get("telemetry_interval_sec", 2))
         self.vehicles = []
         self.statuses = ["idle", "enroute", "on_trip"]
         self._init_fleet()
@@ -88,7 +94,13 @@ class FleetSimulator:
                 "fare_accumulated": round(random.uniform(5.0, 30.0), 2)
             })
 
-    def generate_event(self, vehicle):
+    def generate_event(self, vehicle, interval_sec=None):
+        """Emits one telemetry heartbeat for ``vehicle``.
+
+        ``interval_sec`` defaults to the configured telemetry interval so idle
+        durations advance by the real emit cadence instead of a hardcoded 2s.
+        """
+        interval = float(interval_sec or self.telemetry_interval_sec)
         # Update vehicle state
         status_transition_roll = random.random()
         if status_transition_roll < 0.25:
@@ -96,6 +108,7 @@ class FleetSimulator:
                 vehicle["status"] = "enroute"
                 vehicle["idle_duration"] = 0
                 vehicle["current_trip_id"] = f"TRIP-{random.randint(10000, 99999)}"
+                vehicle["fare_accumulated"] = 0.0
             elif vehicle["status"] == "enroute":
                 vehicle["status"] = "on_trip"
             elif vehicle["status"] == "on_trip":
@@ -104,7 +117,7 @@ class FleetSimulator:
 
         if vehicle["status"] == "idle":
             vehicle["speed"] = 0.0
-            vehicle["idle_duration"] += 2
+            vehicle["idle_duration"] += interval
             fare = 0.0
         elif vehicle["status"] == "enroute":
             vehicle["speed"] = round(random.uniform(20.0, 50.0), 1)
@@ -136,7 +149,7 @@ class FleetSimulator:
             "lon": vehicle["lon"],
             "speed": vehicle["speed"],
             "status": vehicle["status"],
-            "idle_duration_sec": vehicle["idle_duration"],
+            "idle_duration_sec": int(vehicle["idle_duration"]),
             "fare": fare,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
@@ -152,7 +165,9 @@ def main():
 
     logger.info(f"Starting real-time streaming telemetry producer to topic '{topic}'...")
 
-    raw_archive_dir = "/app/data_lake/raw_telemetry"
+    # Default is repo-relative so the producer also runs outside Docker
+    # (previously hardcoded to /app/data_lake/raw_telemetry).
+    raw_archive_dir = os.getenv("RAW_TELEMETRY_DIR", DEFAULT_RAW_ARCHIVE_DIR)
     os.makedirs(raw_archive_dir, exist_ok=True)
 
     event_count = 0
@@ -185,6 +200,12 @@ def main():
         except Exception as e:
             logger.error(f"Error producing telemetry event: {e}")
             time.sleep(2)
+
+    try:
+        producer.flush()
+        producer.close()
+    except Exception as e:
+        logger.warning("Error while flushing the Kafka producer: %s", e)
 
 if __name__ == "__main__":
     main()

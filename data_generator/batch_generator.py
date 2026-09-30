@@ -17,6 +17,12 @@ logger = logging.getLogger("BatchExpenseGenerator")
 
 CONFIG_PATH = os.getenv("CONFIG_PATH", "config/config.yaml")
 
+# Repo relative default so the generator also runs on a host (not only in Docker)
+DEFAULT_DROP_DIR = os.getenv(
+    "DATA_DROP_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_lake", "daily_expenses"),
+)
+
 def load_config():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r") as f:
@@ -27,7 +33,7 @@ def load_config():
             "num_vehicles": 25
         },
         "batch": {
-            "data_drop_dir": "/app/data_lake/daily_expenses"
+            "data_drop_dir": DEFAULT_DROP_DIR
         }
     }
 
@@ -81,7 +87,7 @@ def main():
     config = load_config()
     day_duration = config["simulation"].get("day_duration_sec", 300)
     num_vehicles = config["simulation"].get("num_vehicles", 25)
-    output_dir = config["batch"].get("data_drop_dir", "/app/data_lake/daily_expenses")
+    output_dir = os.getenv("DATA_DROP_DIR") or config["batch"].get("data_drop_dir") or DEFAULT_DROP_DIR
 
     logger.info(f"Starting Batch Expense Generator. Simulated day = {day_duration}s. Target dir: {output_dir}")
 
