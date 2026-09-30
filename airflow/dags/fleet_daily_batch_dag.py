@@ -3,7 +3,7 @@ import os
 import shutil
 import glob
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
 import pandas as pd
 
 default_args = {
@@ -22,7 +22,17 @@ dag = DAG(
     description='Automated batch reconciliation of vehicle telemetry earnings and garage expenses',
     schedule_interval='*/5 * * * *',  # Every 5 minutes (matching 1 simulated day = 5 mins)
     catchup=False,
-    max_active_runs=1
+    max_active_runs=1,
+    tags=['fleet', 'batch', 'reconciliation'],
+    doc_md="""
+    ### Fleet daily profitability reconciliation
+    1. `check_for_new_batch_files` short-circuits the run when the drop folder is empty
+       (previously the check result was ignored and downstream tasks ran anyway).
+    2. `execute_batch_reconciliation` runs the shared batch engine
+       (`batch_layer.batch_processor.run_batch_reconciliation`).
+    3. `archive_batch_files` moves processed drops to the archive folder.
+    4. `generate_consolidated_report` writes the daily executive summary CSV.
+    """,
 )
 
 def check_for_new_batch_files(**kwargs):
@@ -36,9 +46,10 @@ def check_for_new_batch_files(**kwargs):
 
 def execute_batch_reconciliation(**kwargs):
     from batch_layer.batch_processor import run_batch_reconciliation
-    success = run_batch_reconciliation()
-    if not success:
-        print("Reconciliation skipped or found no files.")
+    summary = run_batch_reconciliation()
+    print(f"Reconciliation summary: {summary}")
+    if not summary.get("reconciled_records"):
+        print("No new simulated dates required reconciliation (idempotent run).")
 
 def archive_batch_files(**kwargs):
     drop_dir = os.getenv("DATA_DROP_DIR", "/app/data_lake/daily_expenses")
@@ -58,10 +69,9 @@ def generate_consolidated_report(**kwargs):
     db = os.getenv("POSTGRES_DB", "fleet_db")
     user = os.getenv("POSTGRES_USER", "postgres")
     pwd = os.getenv("POSTGRES_PASSWORD", "postgrespassword")
-    report_dir = "/app/data_lake/consolidated_reports"
+    report_dir = os.getenv("REPORT_OUTPUT_DIR", "/app/data_lake/consolidated_reports")
     os.makedirs(report_dir, exist_ok=True)
 
-    conn = psycopg2.connect(host=host, port=port, dbname=db, user=user, password=pwd)
     query = """
         SELECT simulated_date, 
                COUNT(*) as fleet_size,
@@ -74,13 +84,15 @@ def generate_consolidated_report(**kwargs):
         ORDER BY simulated_date DESC
         LIMIT 10;
     """
-    df = pd.read_sql(query, conn)
+    # `with` guarantees the connection is closed even if the query fails.
+    with psycopg2.connect(host=host, port=port, dbname=db, user=user, password=pwd) as conn:
+        # read_sql_query avoids the SQLAlchemy/UserWarning path of read_sql.
+        df = pd.read_sql_query(query, conn)
     report_file = os.path.join(report_dir, "daily_fleet_executive_summary.csv")
     df.to_csv(report_file, index=False)
     print(f"Generated daily executive summary report at {report_file}")
-    conn.close()
 
-task_check = PythonOperator(
+task_check = ShortCircuitOperator(
     task_id='check_for_new_batch_files',
     python_callable=check_for_new_batch_files,
     dag=dag,

@@ -1,12 +1,22 @@
-kafka-python==2.0.2
+# Ingestion
+# 2.0.3 fixes the vendored-six import failure that breaks `import kafka` on Python 3.12
+# (2.0.2 raises ModuleNotFoundError: No module named 'kafka.vendor.six.moves').
+kafka-python==2.0.3
+
+# Processing / storage
 pandas==2.2.0
 pyarrow==15.0.0
 psycopg2-binary==2.9.9
 pyyaml==6.0.1
+
+# Serving layer
 fastapi==0.109.2
 uvicorn==0.27.1
 pydantic==2.6.1
-streamlit==1.31.1
+streamlit==1.37.1        # >=1.37.0 required for CVE-2024-42474 (path traversal, GHSA-rxff-vr5r-8cj5)
 plotly==5.18.0
-requests==2.31.0
+requests==2.32.3         # >=2.32.0 required for CVE-2024-35195 (Session.verify bypass, GHSA-9wx4-h78v-vm56)
+
+# Testing (httpx is also pinned in requirements-dev.txt for the FastAPI TestClient)
 pytest==8.0.0
+

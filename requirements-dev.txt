@@ -1,0 +1,7 @@
+# Development / test dependencies
+-r requirements.txt
+
+# The FastAPI TestClient (starlette 0.36.x) does not support httpx >= 0.28,
+# so the HTTP client used by tests/ is pinned explicitly.
+httpx==0.27.2
+pytest==8.0.0

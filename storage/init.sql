@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS speed_fleet_metrics (
     PRIMARY KEY (window_start, grid_zone)
 );
 
+-- The serving API reads the newest window per zone, so keep that path indexed.
+CREATE INDEX IF NOT EXISTS idx_speed_metrics_window_end
+    ON speed_fleet_metrics (window_end DESC);
+
 CREATE TABLE IF NOT EXISTS speed_vehicle_alerts (
     id SERIAL PRIMARY KEY,
     vehicle_id VARCHAR(50) NOT NULL,
@@ -26,6 +30,9 @@ CREATE TABLE IF NOT EXISTS speed_vehicle_alerts (
     alert_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resolved BOOLEAN DEFAULT FALSE
 );
+
+CREATE INDEX IF NOT EXISTS idx_speed_alerts_unresolved
+    ON speed_vehicle_alerts (resolved, vehicle_id);
 
 -- Batch Layer Tables (Historical and daily reconciled extracts)
 CREATE TABLE IF NOT EXISTS batch_vehicle_expenses (
@@ -39,6 +46,9 @@ CREATE TABLE IF NOT EXISTS batch_vehicle_expenses (
     ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (simulated_date, vehicle_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_batch_expenses_date
+    ON batch_vehicle_expenses (simulated_date DESC);
 
 CREATE TABLE IF NOT EXISTS batch_daily_profitability (
     simulated_date DATE NOT NULL,
@@ -55,6 +65,9 @@ CREATE TABLE IF NOT EXISTS batch_daily_profitability (
     reconciled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (simulated_date, vehicle_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_batch_profitability_date
+    ON batch_daily_profitability (simulated_date DESC);
 
 -- Serving Layer: Unified View combining Speed and Batch records
 CREATE OR REPLACE VIEW v_unified_vehicle_summary AS
