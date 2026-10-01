@@ -2,251 +2,251 @@
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-101",
-    "fuel_cost": 22.75,
-    "maintenance_cost": 5.41,
-    "total_expense": 28.16,
-    "distance_covered_km": 119.81,
+    "fuel_cost": 37.0,
+    "maintenance_cost": 18.68,
+    "total_expense": 55.68,
+    "distance_covered_km": 186.12,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223118+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-102",
-    "fuel_cost": 48.19,
-    "maintenance_cost": 19.07,
-    "total_expense": 67.26,
-    "distance_covered_km": 305.11,
+    "fuel_cost": 36.36,
+    "maintenance_cost": 18.61,
+    "total_expense": 54.97,
+    "distance_covered_km": 179.96,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-103",
-    "fuel_cost": 34.22,
-    "maintenance_cost": 18.91,
-    "total_expense": 53.13,
-    "distance_covered_km": 205.83,
-    "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 20.32,
+    "maintenance_cost": 93.79,
+    "total_expense": 114.11,
+    "distance_covered_km": 126.45,
+    "service_flag": "ENGINE_TUNE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-104",
-    "fuel_cost": 53.74,
-    "maintenance_cost": 12.5,
-    "total_expense": 66.24,
-    "distance_covered_km": 309.88,
+    "fuel_cost": 50.89,
+    "maintenance_cost": 8.07,
+    "total_expense": 58.96,
+    "distance_covered_km": 266.03,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-105",
-    "fuel_cost": 41.55,
-    "maintenance_cost": 8.82,
-    "total_expense": 50.37,
-    "distance_covered_km": 196.66,
+    "fuel_cost": 57.76,
+    "maintenance_cost": 10.95,
+    "total_expense": 68.71,
+    "distance_covered_km": 279.95,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-106",
-    "fuel_cost": 34.91,
-    "maintenance_cost": 9.47,
-    "total_expense": 44.38,
-    "distance_covered_km": 219.5,
+    "fuel_cost": 35.9,
+    "maintenance_cost": 7.5,
+    "total_expense": 43.4,
+    "distance_covered_km": 176.67,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-107",
-    "fuel_cost": 23.5,
-    "maintenance_cost": 18.57,
-    "total_expense": 42.07,
-    "distance_covered_km": 116.18,
-    "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 33.96,
+    "maintenance_cost": 85.98,
+    "total_expense": 119.94,
+    "distance_covered_km": 157.89,
+    "service_flag": "TIRE_REPLACE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-108",
-    "fuel_cost": 49.2,
-    "maintenance_cost": 7.65,
-    "total_expense": 56.85,
-    "distance_covered_km": 228.32,
-    "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 36.35,
+    "maintenance_cost": 84.82,
+    "total_expense": 121.17,
+    "distance_covered_km": 189.96,
+    "service_flag": "TIRE_REPLACE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-109",
-    "fuel_cost": 63.39,
-    "maintenance_cost": 13.49,
-    "total_expense": 76.88,
-    "distance_covered_km": 313.98,
+    "fuel_cost": 50.77,
+    "maintenance_cost": 17.91,
+    "total_expense": 68.68,
+    "distance_covered_km": 236.11,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-110",
-    "fuel_cost": 51.09,
-    "maintenance_cost": 8.98,
-    "total_expense": 60.07,
-    "distance_covered_km": 263.6,
+    "fuel_cost": 22.31,
+    "maintenance_cost": 23.01,
+    "total_expense": 45.32,
+    "distance_covered_km": 139.15,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-111",
-    "fuel_cost": 43.45,
-    "maintenance_cost": 91.97,
-    "total_expense": 135.42,
-    "distance_covered_km": 223.93,
-    "service_flag": "TIRE_REPLACE",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 20.54,
+    "maintenance_cost": 15.68,
+    "total_expense": 36.22,
+    "distance_covered_km": 115.47,
+    "service_flag": "NORMAL",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-112",
-    "fuel_cost": 32.8,
-    "maintenance_cost": 22.28,
-    "total_expense": 55.08,
-    "distance_covered_km": 209.17,
+    "fuel_cost": 18.31,
+    "maintenance_cost": 20.53,
+    "total_expense": 38.84,
+    "distance_covered_km": 86.43,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-113",
-    "fuel_cost": 25.2,
-    "maintenance_cost": 11.49,
-    "total_expense": 36.69,
-    "distance_covered_km": 131.9,
+    "fuel_cost": 41.44,
+    "maintenance_cost": 15.14,
+    "total_expense": 56.58,
+    "distance_covered_km": 236.48,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-114",
-    "fuel_cost": 34.9,
-    "maintenance_cost": 24.16,
-    "total_expense": 59.06,
-    "distance_covered_km": 181.5,
+    "fuel_cost": 55.52,
+    "maintenance_cost": 13.84,
+    "total_expense": 69.36,
+    "distance_covered_km": 302.71,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-115",
-    "fuel_cost": 48.74,
-    "maintenance_cost": 23.67,
-    "total_expense": 72.41,
-    "distance_covered_km": 270.63,
+    "fuel_cost": 45.94,
+    "maintenance_cost": 15.23,
+    "total_expense": 61.17,
+    "distance_covered_km": 250.36,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-116",
-    "fuel_cost": 24.5,
-    "maintenance_cost": 16.78,
-    "total_expense": 41.28,
-    "distance_covered_km": 150.8,
+    "fuel_cost": 19.96,
+    "maintenance_cost": 8.94,
+    "total_expense": 28.9,
+    "distance_covered_km": 107.43,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-117",
-    "fuel_cost": 23.59,
-    "maintenance_cost": 89.51,
-    "total_expense": 113.1,
-    "distance_covered_km": 135.6,
-    "service_flag": "TIRE_REPLACE",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 47.32,
+    "maintenance_cost": 16.25,
+    "total_expense": 63.57,
+    "distance_covered_km": 267.06,
+    "service_flag": "NORMAL",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-118",
-    "fuel_cost": 27.09,
-    "maintenance_cost": 20.62,
-    "total_expense": 47.71,
-    "distance_covered_km": 153.06,
+    "fuel_cost": 48.02,
+    "maintenance_cost": 16.55,
+    "total_expense": 64.57,
+    "distance_covered_km": 240.81,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-119",
-    "fuel_cost": 37.82,
-    "maintenance_cost": 24.1,
-    "total_expense": 61.92,
-    "distance_covered_km": 212.6,
-    "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 46.26,
+    "maintenance_cost": 132.08,
+    "total_expense": 178.34,
+    "distance_covered_km": 232.4,
+    "service_flag": "BRAKE_SERVICE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-120",
-    "fuel_cost": 17.16,
-    "maintenance_cost": 6.4,
-    "total_expense": 23.56,
-    "distance_covered_km": 82.65,
+    "fuel_cost": 30.28,
+    "maintenance_cost": 13.42,
+    "total_expense": 43.7,
+    "distance_covered_km": 152.39,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-121",
-    "fuel_cost": 51.91,
-    "maintenance_cost": 12.2,
-    "total_expense": 64.11,
-    "distance_covered_km": 314.3,
+    "fuel_cost": 43.54,
+    "maintenance_cost": 17.38,
+    "total_expense": 60.92,
+    "distance_covered_km": 232.62,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-122",
-    "fuel_cost": 40.91,
-    "maintenance_cost": 19.06,
-    "total_expense": 59.97,
-    "distance_covered_km": 267.93,
-    "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 30.69,
+    "maintenance_cost": 124.67,
+    "total_expense": 155.36,
+    "distance_covered_km": 191.75,
+    "service_flag": "ENGINE_TUNE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-123",
-    "fuel_cost": 19.23,
-    "maintenance_cost": 164.62,
-    "total_expense": 183.85,
-    "distance_covered_km": 124.4,
-    "service_flag": "BRAKE_SERVICE",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 21.82,
+    "maintenance_cost": 120.55,
+    "total_expense": 142.37,
+    "distance_covered_km": 126.63,
+    "service_flag": "TIRE_REPLACE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-124",
-    "fuel_cost": 28.09,
-    "maintenance_cost": 20.9,
-    "total_expense": 48.99,
-    "distance_covered_km": 181.11,
-    "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "fuel_cost": 14.92,
+    "maintenance_cost": 112.01,
+    "total_expense": 126.93,
+    "distance_covered_km": 94.71,
+    "service_flag": "ENGINE_TUNE",
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   },
   {
     "simulated_date": "2026-09-30",
     "vehicle_id": "VEH-125",
-    "fuel_cost": 54.95,
-    "maintenance_cost": 20.24,
-    "total_expense": 75.19,
-    "distance_covered_km": 284.69,
+    "fuel_cost": 61.28,
+    "maintenance_cost": 8.15,
+    "total_expense": 69.43,
+    "distance_covered_km": 316.54,
     "service_flag": "NORMAL",
-    "generated_at": "2026-09-25T06:17:45.223732+00:00"
+    "generated_at": "2026-09-30T17:18:30.958345+00:00"
   }
 ]

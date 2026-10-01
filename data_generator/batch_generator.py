@@ -9,6 +9,7 @@ import yaml
 import pandas as pd
 
 # Structured Logging Configuration
+
 logging.basicConfig(
     level=logging.INFO,
     format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "component": "BatchExpenseGenerator", "message": "%(message)s"}'
@@ -18,6 +19,7 @@ logger = logging.getLogger("BatchExpenseGenerator")
 CONFIG_PATH = os.getenv("CONFIG_PATH", "config/config.yaml")
 
 # Repo relative default so the generator also runs on a host (not only in Docker)
+
 DEFAULT_DROP_DIR = os.getenv(
     "DATA_DROP_DIR",
     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_lake", "daily_expenses"),
@@ -50,7 +52,7 @@ def generate_daily_expense_file(simulated_date_str, num_vehicles, output_dir):
         fuel_cost = round(distance_km * fuel_rate, 2)
 
         # Maintenance cost: some vehicles have major maintenance or repair requirements
-        is_high_maintenance = (random.random() < 0.20)  # 20% of vehicles undergo service/repairs
+        is_high_maintenance = (random.random() < 0.20) 
         if is_high_maintenance:
             maintenance_cost = round(random.uniform(70.0, 180.0), 2)
             service_flag = random.choice(["TIRE_REPLACE", "ENGINE_TUNE", "BRAKE_SERVICE"])

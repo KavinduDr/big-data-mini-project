@@ -4,6 +4,8 @@ WORKDIR /app
 
 # build-essential/libpq-dev are needed to build wheels that have no manylinux
 # build for this platform; curl is only used by the container healthcheck.
+
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -17,6 +19,7 @@ COPY . .
 
 # Unbuffered stdout/stderr so structured logs reach `docker compose logs`
 # immediately (observability requirement).
+
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
