@@ -1,5 +1,6 @@
 # Lambda Architecture platform: Kafka, PostgreSQL, pipeline services and
 # (optional, profile "airflow") Apache Airflow orchestration.
+
 services:
   # ----------------------------------------------------
   # Ingestion Engine: Apache Kafka (KRaft Mode)
@@ -8,6 +9,7 @@ services:
   # images were moved to the "bitnamilegacy" repository in 2025 and
   # `bitnami/kafka:3.7.0` no longer resolves (Docker Hub returns 404), which
   # made `docker compose up` fail with "manifest unknown".
+  
   kafka:
     restart: unless-stopped
     image: apache/kafka:3.7.0

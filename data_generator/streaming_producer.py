@@ -11,6 +11,7 @@ except ImportError:
     yaml = None
 
 # Structured Logging Configuration
+
 logging.basicConfig(
     level=logging.INFO,
     format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "component": "StreamingProducer", "message": "%(message)s"}'
